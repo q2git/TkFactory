@@ -117,8 +117,8 @@ if __name__ == '__main__':
     def fun(event=None):
         print 'hh'
     gui = TkFactory('gui.ini',{'CMD1':fun,'CMD3':fun,'None':None})
-    gui.widgets['bt_1'].config(command=lambda x=0:gui.textvariables['TestDataID'].set('Hello'))
-    gui.widgets['ckbt1'].config(command=lambda x=0:gui.textvariables['ckbt1'].set(gui.textvariables['SampleRun'].get()))
+    gui.widgets['bt_1'].config(command=lambda x=0:gui.textvariables['TID'].set('Hello'))
+    gui.widgets['ckbt1'].config(command=lambda x=0:gui.textvariables['ckbt1'].set(gui.textvariables['SR'].get()))
     #gui.widgets['mn1'].add('cascade',label='test')
     #gui.widgets['mn2'].add('cascade',label='test2')
 
