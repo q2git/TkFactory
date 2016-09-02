@@ -16,33 +16,40 @@ class TkFactory:
         self.widgets = {}
         self.textvariables = {}
         self.cmds = cmds
-        if tk_ini.has_key('widgets'):
-            self._createWidgets(tk_ini['widgets'])
-        if tk_ini.has_key('styles'):
-            self._config_styles(tk_ini['styles'])
+        if tk_ini.has_key('WIDGETS'):
+            self._createWidgets(tk_ini['WIDGETS'])
+        if tk_ini.has_key('STYLES'):
+            self._config_styles(tk_ini['STYLES'])
             
     def _createWidgets(self,cfg_widgets):
-        "name,type,parent,(grids),{options}"
-        for name,w_type,parent,grids,opts in cfg_widgets:                
-            if w_type == 'Tk': 
-                self._config_root(name, opts)
-                continue #the rest codes will not be excuted
-            try: #get ttk widget instance
-                self.widgets[name] =  getattr(ttk,w_type)(self.widgets[parent]) 
-            except AttributeError: #get tk widget instance
-                self.widgets[name] =  getattr(tk,w_type)(self.widgets[parent])
-
-            if w_type == 'Treeview': #config treeview
-                self._config_treeview(name, opts)
-            if w_type == 'Menu': #config treeview
-                self._config_menu(name, grids, opts)
-                continue
+        "name,widget,parent,(grid),{options}"
+        self._config_root(cfg_widgets.pop(0))
+        tk_ttk = {'tk':tk, 'ttk':ttk}
+        for name,widget,parent,grid,opts in cfg_widgets:
+            obj, widget_name = widget.split('.')            
+            if parent == None:
+                self.widgets[name] = getattr(tk_ttk[obj],widget_name)()              
+            else:
+                self.widgets[name] = getattr(tk_ttk[obj],widget_name)(self.widgets[parent]) 
                 
+            if widget_name == 'Treeview': #config treeview
+                self._config_treeview(name, opts)
+            if widget_name == 'Menu': #config treeview
+                self._config_menu(name, opts)
+            if widget_name == 'Notebook' and opts.has_key('TABS'): #config notebook
+                for child,kw in opts.pop('TABS'):
+                    self.widgets[name].add(self.widgets[child], **kw)
+            if widget_name == 'PanedWindow' and opts.has_key('PANES'): #config notebook
+                for child,kw in opts.pop('PANES'):
+                    self.widgets[name].add(self.widgets[child],**kw)
+                    
             self._config_widget(name, opts) #config options
-            self._config_grid(name, grids)      
+            if grid is not None:
+                self._config_grid(name, grid)      
 
-    def _config_root(self, name, opts):
+    def _config_root(self, cfg):
         "config root window"
+        name, opts = cfg
         self.widgets[name] =  tk.Tk()
         self.root = self.widgets[name]
         if opts.has_key('geometry'):self.root.geometry(opts['geometry'])
@@ -71,7 +78,7 @@ class TkFactory:
                       
     def _config_widget(self,name,opts): 
         "config the widget with specified option"
-        if self.widgets[name].configure().has_key('textvariable'):
+        if self.widgets[name].config().has_key('textvariable'):
             self.textvariables[name] = tk.StringVar()
             self.widgets[name].config(textvariable=self.textvariables[name])
             if opts.has_key('text'):
@@ -80,16 +87,15 @@ class TkFactory:
         #set the rest options    
         self.widgets[name].config(**opts)
         
-    def _config_menu(self, name, submenus, opts):
+    def _config_menu(self, name, opts):
         "config menu"
         if isinstance(self.widgets[name].master,tk.Menu):
             self.widgets[name].master.add_cascade(label=opts['title'],menu=self.widgets[name],underline=0)
         elif self.widgets[name].master.config().has_key('menu'):
             self.widgets[name].master.config(menu=self.widgets[name])
-        for kind, coption in submenus:
-            self.widgets[name].add(kind, command=self.cmds[coption.pop('command')], **coption)
-            
-        self._config_widget(name, opts)      
+        if opts.has_key('SUBMENUS'):
+            for kind, coption in opts.pop('SUBMENUS'):
+                self.widgets[name].add(kind, command=self.cmds[coption.pop('CMD')], **coption)
             
     def _config_treeview(self, name, opts):
         vsb = ttk.Scrollbar(self.widgets[name].master,orient="vertical", command=self.widgets[name].yview)
@@ -117,11 +123,13 @@ if __name__ == '__main__':
     def fun(event=None):
         print 'hh'
     gui = TkFactory('gui.ini',{'CMD1':fun,'CMD3':fun,'None':None})
-    gui.widgets['bt_1'].config(command=lambda x=0:gui.textvariables['TID'].set('Hello'))
-    gui.widgets['ckbt1'].config(command=lambda x=0:gui.textvariables['ckbt1'].set(gui.textvariables['SR'].get()))
+    gui.widgets['b1'].config(command=lambda x=0:gui.textvariables['e1'].set('Hello'))
+    gui.widgets['rdbt1'].config(command=lambda x=0:gui.textvariables['ckbt1'].set('CheckButton1'))
+    gui.widgets['ckbt1'].config(command=lambda x=0:gui.textvariables['ckbt1'].set(gui.textvariables['rdbt1'].get()))
     #gui.widgets['mn1'].add('cascade',label='test')
-    #gui.widgets['mn2'].add('cascade',label='test2')
-
+    gui.widgets['tree1'].insert('', 0, iid=11,text='hello', values=('a','b',234,324,'c','你好',),)
+    gui.widgets['s1'].config(command=lambda x=0:gui.textvariables['ls1'].set(gui.widgets['s1'].get()))
+    gui.widgets['pg1'].start(50)
     gui.run()
 
     #print ast.literal_eval(codecs.open('gui.ini','r','utf_8_sig').read())
