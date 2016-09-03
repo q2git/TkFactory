@@ -10,132 +10,182 @@ import ttk
 import codecs
 import ast
 
+    
 class TkFactory:
     def __init__(self,ini_file):
-        tk_ini = ast.literal_eval(codecs.open(ini_file,'r','utf_8_sig').read())
-        self.widgets = {}
+        self.widgets = {None:None}
         self.textvariables = {}
-        self._config_root(tk_ini['WIDGETS'].pop(0)) #config root
-        if tk_ini.has_key('STYLES'): self._config_styles(tk_ini['STYLES']) #config style
-        self._createWidgets(tk_ini['WIDGETS']) #config widget
+        WIDGETS, STYLES = read_ini(ini_file)
         
-    def _config_root(self, cfg):
-        "config root window"
+        self._create_root(WIDGETS.pop(0)) #create root
+        self._config_styles(STYLES) #config style
+        self._createWidgets(WIDGETS) #create widget
+        
+    def _create_root(self, cfg):
+        """ Create the root window """
+        if cfg is None:
+            return         
         name, opts = cfg
         self.widgets[name] =  tk.Tk()
         self.root = self.widgets[name]
-        if opts.has_key('geometry'):self.root.geometry(opts['geometry'])
-        if opts.has_key('resizable'):self.root.resizable(width=opts['resizable'][0],height=opts['resizable'][1])
-        if opts.has_key('iconbitmap'):self.root.iconbitmap(opts['iconbitmap'])
-        if opts.has_key('title'):self.root.title(opts['title'])
+        geometry = opts.pop('geometry', None)
+        resizable = opts.pop('resizable', None)
+        iconbitmap = opts.pop('iconbitmap', None)
+        title = opts.pop('title', None)
+        
+        if geometry:
+            self.root.geometry(geometry)
+        if resizable:
+            self.root.resizable(width=resizable[0],height=resizable[1])
+        if iconbitmap:
+            self.root.iconbitmap(iconbitmap)
+        if title:
+            self.root.title(title)
                  
-    def _config_styles(self,cfg_styles):
-        "config styles"
+    def _config_styles(self,cfg):
+        """ Config the ttk styles """
+        if cfg is None:
+            return           
         self.root.s=ttk.Style()
-        for name, opts in cfg_styles:
+        for name, opts in cfg:
             if name == 'theme_use':
                 self.root.s.theme_use(opts)
                 continue #jump to next loop
             self.root.s.configure(name,**opts) 
             
     def _createWidgets(self,cfg_widgets):
-        "name,widget,parent,(grid),{options}"
+        """
+        Create the widgets
+        cfg_widgets = 
+         ( name,widget, parent,
+           (grid), -->(row,col,row-span,col-span,sticky,row-stretch,col-stretch)
+           {options}
+          )
+        """
         tk_ttk = {'tk':tk, 'ttk':ttk}
         for name,widget,parent,grid,opts in cfg_widgets:
-            obj, widget_name = widget.split('.')            
-            if parent == None:
-                self.widgets[name] = getattr(tk_ttk[obj],widget_name)()              
-            else:
-                self.widgets[name] = getattr(tk_ttk[obj],widget_name)(self.widgets[parent]) 
+            obj, w = widget.split('.') 
+            
+            #create tk or ttk widgets instance
+            self.widgets[name] = getattr(tk_ttk[obj],w)(self.widgets[parent]) 
                 
-            if widget_name == 'Treeview': #config treeview
-                self._config_treeview(name, opts)
-            if widget_name == 'Menu': #config treeview
-                self._config_menu(name, opts)
-            if widget_name == 'Notebook' and opts.has_key('TABS'): #config notebook
+            if w == 'Treeview': #config treeview
+                config_treeview(self.widgets[name], opts)
+                
+            if w == 'Menu': #config treeview
+                config_menu(self.widgets[name], opts)
+                
+            if w == 'Notebook' and opts.has_key('TABS'): #config notebook
                 for child,kw in opts.pop('TABS'):
                     self.widgets[name].add(self.widgets[child], **kw)
-            if widget_name == 'PanedWindow' and opts.has_key('PANES'): #config notebook
+                    
+            if w == 'PanedWindow' and opts.has_key('PANES'): #config notebook
                 for child,kw in opts.pop('PANES'):
                     self.widgets[name].add(self.widgets[child], **kw)
                     
-            self._config_widget(name, opts) #config options
-            if grid is not None:
-                self._config_grid(name, grid)      
-    
-    def _config_grid(self, name, grids):
-        "config grid"
-        row_id,col_id,row_span,col_span,sticky,stretch_row,stretch_col = grids        
-        self.widgets[name].grid(row=row_id,column=col_id,rowspan=row_span,
-                           columnspan=col_span,sticky=sticky)        
-        if stretch_row!=0:  #enable stretching                      
-            self.widgets[name].master.rowconfigure(row_id,weight=stretch_row)
-        if stretch_col!=0:  #enable stretching     
-            self.widgets[name].master.columnconfigure(col_id,weight=stretch_col)                                    
+            self._config_options(name, opts) #config options
+            config_grid(self.widgets[name], grid)
+            #if grid is not None:
+            #    self._config_grid(name, grid)                                          
                       
-    def _config_widget(self,name,opts): 
-        "config the widget with specified option"
+    def _config_options(self,name,opts): 
+        """
+        Config the rest of options
+        """
         if self.widgets[name].config().has_key('textvariable'):
             self.textvariables[name] = tk.StringVar()
             self.widgets[name].config(textvariable=self.textvariables[name])
-            if opts.has_key('text'):
-                self.textvariables[name].set(opts['text'])
-                opts.pop('text')
-        #set the rest options    
+            text = opts.pop('text', None)
+            if text:
+                self.textvariables[name].set(text)              
+        #set the rest of options    
         self.widgets[name].config(**opts)
-        
-    def _config_menu(self, name, opts):
-        "config menu"
-        if isinstance(self.widgets[name].master,tk.Menu):
-            self.widgets[name].master.add_cascade(label=opts['title'],menu=self.widgets[name],underline=0)
-        elif self.widgets[name].master.config().has_key('menu'):
-            self.widgets[name].master.config(menu=self.widgets[name])
-        if opts.has_key('SUBMENUS'):
-            for kind, coption in opts.pop('SUBMENUS'):
-                self.widgets[name].add(kind, **coption)
-                
-    def _config_treeview(self, name, opts):
-        vsb = ttk.Scrollbar(self.widgets[name].master,orient="vertical", command=self.widgets[name].yview)
-        hsb = ttk.Scrollbar(self.widgets[name].master,orient="horizontal", command=self.widgets[name].xview)
-        self.widgets[name].configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-        vsb.grid(column=1, row=0, sticky='ns')
-        hsb.grid(column=0, row=1, sticky='ew') 
-        if opts.has_key('columns'):self.widgets[name].config(columns=opts['columns'])
-        if opts.has_key('#0'): #The icon column
-            self.widgets[name].heading('#0',text=opts['#0']['text'])
-            self.widgets[name].column('#0',width=opts['#0']['width'])
-            opts.pop('#0')
-        for cid,text,width in zip(opts['columns'],opts['heading'],opts['col_width']):
-            self.widgets[name].heading(cid,text=text) #heading column
-            self.widgets[name].column(cid,width=width) #column width 
-        opts.pop('heading')
-        opts.pop('col_width')
-        opts.pop('columns')        
-            
+       
     def run(self):
         self.root.mainloop()
     
     def stop(self):
         self.root.destroy()
+
+
+def read_ini(ini_file):
+    """ 
+    Read gui configurations from the ini file 
+    """
+    with codecs.open(ini_file,'r','utf_8_sig') as f:
+        cfg = ast.literal_eval(f.read())   
+
+    return (cfg.pop('WIDGETS', None) , cfg.pop('STYLES', None),)
+    
+
+def config_grid(widget, grid):
+    """
+    Config the grid and stretching options
+    """
+    if grid is None: 
+        return
         
+    row_id,col_id,row_span,col_span,sticky,stretch_row,stretch_col = grid
+    
+    widget.grid(row=row_id,column=col_id,rowspan=row_span,
+                       columnspan=col_span,sticky=sticky) 
+                       
+    if stretch_row!=0:  #enable stretching                      
+        widget.master.rowconfigure(row_id,weight=stretch_row)
+        
+    if stretch_col!=0:  #enable stretching     
+        widget.master.columnconfigure(col_id,weight=stretch_col)  
+            
+
+def config_menu(widget, opts):
+    """
+    Config the menu widget
+    """
+    label = opts.get('title')
+    submenus = opts.pop('SUBMENUS', None)
+    if isinstance(widget.master,tk.Menu): #for meunu
+        widget.master.add_cascade(label=label,menu=widget,underline=0)
+    elif widget.master.config().has_key('menu'): #for menubutton, etc.
+        widget.master.config(menu=widget)
+    if submenus: #add submenu
+        for kind, coption in submenus:
+            widget.add(kind, **coption)
+
+
+def config_treeview(widget, opts):
+    """
+    Config the treeview widget
+    """        
+    columns = opts.pop('columns',None)
+    heading = opts.pop('heading',None)
+    col_width = opts.pop('col_width',None)
+    icon_col = opts.pop('#0',None) #(text,width)
+    VSB = opts.pop('VSB',None)
+    HSB = opts.pop('HSB',None)
+    
+    if VSB: #vertical scrollbar
+        vsb = ttk.Scrollbar(widget.master,orient="vertical",
+                            command=widget.yview)
+        widget.configure(yscrollcommand=vsb.set)
+        vsb.grid(row=VSB[0],column=VSB[1],rowspan=VSB[2],
+                           columnspan=VSB[3], sticky='ns')                            
+    if HSB: #horizontal scrollbar
+        hsb = ttk.Scrollbar(widget.master,orient="horizontal",
+                            command=widget.xview)
+        widget.configure(xscrollcommand=hsb.set)   
+        hsb.grid(row=HSB[0],column=HSB[1],rowspan=HSB[2],
+                           columnspan=HSB[3], sticky='ew')  
+    if icon_col: #The icon column
+        widget.heading('#0',text=icon_col['text'])
+        widget.column('#0',width=icon_col['width'])
+    #heading and column width        
+    if columns and heading and col_width:
+        widget.config(columns=columns)
+        for cid,text,width in zip(columns,heading,col_width):
+            widget.heading(cid,text=text) #heading column
+            widget.column(cid,width=width) #column width   
+
                                 
 if __name__ == '__main__':
     gui = TkFactory('gui.ini')
-    gui.widgets['b1'].config(command=lambda x=0:gui.textvariables['e1'].set('Hello'))
-    gui.widgets['rdbt1'].config(command=lambda x=0:gui.textvariables['ckbt1'].set('CheckButton1'))
-    gui.widgets['ckbt1'].config(command=lambda x=0:gui.textvariables['ckbt1'].set(gui.textvariables['rdbt1'].get()))
-    gui.widgets['mn2'].entryconfig(1,command=gui.stop)
-    def fun(i):
-        gui.widgets['mn1'].entryconfig(1,label='title{}'.format(i))
-        gui.widgets['mn2'].entryconfig(1,label=gui.widgets['mn3'].entrycget(i,'label'))
-    gui.widgets['mn3'].entryconfig(0,command=lambda :fun(1))
-    gui.widgets['mn3'].entryconfig(1,command=lambda :fun(2))
-    gui.widgets['mn3'].entryconfig(2,command=lambda :fun(3))    
-    gui.widgets['tree1'].insert('', 0, iid=11,text='hello', values=('a','b',234,324,'c','你好',),)
-    gui.widgets['s1'].config(command=lambda x=0:gui.textvariables['ls1'].set(gui.widgets['s1'].get()))
-    gui.widgets['pg1'].start(50)
-
     gui.run()
-
-
-    #print ast.literal_eval(codecs.open('gui.ini','r','utf_8_sig').read())
