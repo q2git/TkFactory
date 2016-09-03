@@ -11,11 +11,10 @@ import codecs
 import ast
 
 class TkFactory:
-    def __init__(self,ini_file,cmds):
+    def __init__(self,ini_file):
         tk_ini = ast.literal_eval(codecs.open(ini_file,'r','utf_8_sig').read())
         self.widgets = {}
         self.textvariables = {}
-        self.cmds = cmds
         self._config_root(tk_ini['WIDGETS'].pop(0)) #config root
         if tk_ini.has_key('STYLES'): self._config_styles(tk_ini['STYLES']) #config style
         self._createWidgets(tk_ini['WIDGETS']) #config widget
@@ -93,8 +92,8 @@ class TkFactory:
             self.widgets[name].master.config(menu=self.widgets[name])
         if opts.has_key('SUBMENUS'):
             for kind, coption in opts.pop('SUBMENUS'):
-                self.widgets[name].add(kind, command=self.cmds[coption.pop('CMD')], **coption)
-            
+                self.widgets[name].add(kind, **coption)
+                
     def _config_treeview(self, name, opts):
         vsb = ttk.Scrollbar(self.widgets[name].master,orient="vertical", command=self.widgets[name].yview)
         hsb = ttk.Scrollbar(self.widgets[name].master,orient="horizontal", command=self.widgets[name].xview)
@@ -115,19 +114,28 @@ class TkFactory:
             
     def run(self):
         self.root.mainloop()
+    
+    def stop(self):
+        self.root.destroy()
         
                                 
 if __name__ == '__main__':
-    def fun(event=None):
-        print 'hh'
-    gui = TkFactory('gui.ini',{'CMD1':fun,'CMD3':fun,'None':None})
+    gui = TkFactory('gui.ini')
     gui.widgets['b1'].config(command=lambda x=0:gui.textvariables['e1'].set('Hello'))
     gui.widgets['rdbt1'].config(command=lambda x=0:gui.textvariables['ckbt1'].set('CheckButton1'))
     gui.widgets['ckbt1'].config(command=lambda x=0:gui.textvariables['ckbt1'].set(gui.textvariables['rdbt1'].get()))
-    #gui.widgets['mn1'].add('cascade',label='test')
+    gui.widgets['mn2'].entryconfig(1,command=gui.stop)
+    def fun(i):
+        gui.widgets['mn1'].entryconfig(1,label='title{}'.format(i))
+        gui.widgets['mn2'].entryconfig(1,label='hello{}'.format(i))
+    gui.widgets['mn3'].entryconfig(0,command=lambda :fun(1))
+    gui.widgets['mn3'].entryconfig(1,command=lambda :fun(2))
+    gui.widgets['mn3'].entryconfig(2,command=lambda :fun(3))    
     gui.widgets['tree1'].insert('', 0, iid=11,text='hello', values=('a','b',234,324,'c','你好',),)
     gui.widgets['s1'].config(command=lambda x=0:gui.textvariables['ls1'].set(gui.widgets['s1'].get()))
     gui.widgets['pg1'].start(50)
+
     gui.run()
+
 
     #print ast.literal_eval(codecs.open('gui.ini','r','utf_8_sig').read())
