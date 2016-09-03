@@ -16,14 +16,31 @@ class TkFactory:
         self.widgets = {}
         self.textvariables = {}
         self.cmds = cmds
-        if tk_ini.has_key('WIDGETS'):
-            self._createWidgets(tk_ini['WIDGETS'])
-        if tk_ini.has_key('STYLES'):
-            self._config_styles(tk_ini['STYLES'])
+        self._config_root(tk_ini['WIDGETS'].pop(0)) #config root
+        if tk_ini.has_key('STYLES'): self._config_styles(tk_ini['STYLES']) #config style
+        self._createWidgets(tk_ini['WIDGETS']) #config widget
+        
+    def _config_root(self, cfg):
+        "config root window"
+        name, opts = cfg
+        self.widgets[name] =  tk.Tk()
+        self.root = self.widgets[name]
+        if opts.has_key('geometry'):self.root.geometry(opts['geometry'])
+        if opts.has_key('resizable'):self.root.resizable(width=opts['resizable'][0],height=opts['resizable'][1])
+        if opts.has_key('iconbitmap'):self.root.iconbitmap(opts['iconbitmap'])
+        if opts.has_key('title'):self.root.title(opts['title'])
+                 
+    def _config_styles(self,cfg_styles):
+        "config styles"
+        self.root.s=ttk.Style()
+        for name, opts in cfg_styles:
+            if name == 'theme_use':
+                self.root.s.theme_use(opts)
+                continue #jump to next loop
+            self.root.s.configure(name,**opts) 
             
     def _createWidgets(self,cfg_widgets):
         "name,widget,parent,(grid),{options}"
-        self._config_root(cfg_widgets.pop(0))
         tk_ttk = {'tk':tk, 'ttk':ttk}
         for name,widget,parent,grid,opts in cfg_widgets:
             obj, widget_name = widget.split('.')            
@@ -41,21 +58,11 @@ class TkFactory:
                     self.widgets[name].add(self.widgets[child], **kw)
             if widget_name == 'PanedWindow' and opts.has_key('PANES'): #config notebook
                 for child,kw in opts.pop('PANES'):
-                    self.widgets[name].add(self.widgets[child],**kw)
+                    self.widgets[name].add(self.widgets[child], **kw)
                     
             self._config_widget(name, opts) #config options
             if grid is not None:
                 self._config_grid(name, grid)      
-
-    def _config_root(self, cfg):
-        "config root window"
-        name, opts = cfg
-        self.widgets[name] =  tk.Tk()
-        self.root = self.widgets[name]
-        if opts.has_key('geometry'):self.root.geometry(opts['geometry'])
-        if opts.has_key('resizable'):self.root.resizable(width=opts['resizable'][0],height=opts['resizable'][1])
-        if opts.has_key('iconbitmap'):self.root.iconbitmap(opts['iconbitmap'])
-        if opts.has_key('title'):self.root.title(opts['title'])     
     
     def _config_grid(self, name, grids):
         "config grid"
@@ -65,16 +72,7 @@ class TkFactory:
         if stretch_row!=0:  #enable stretching                      
             self.widgets[name].master.rowconfigure(row_id,weight=stretch_row)
         if stretch_col!=0:  #enable stretching     
-            self.widgets[name].master.columnconfigure(col_id,weight=stretch_col)     
-                
-    def _config_styles(self,cfg_styles):
-        "config styles"
-        self.root.s=ttk.Style()
-        for name, opts in cfg_styles:
-            if name == 'theme_use':
-                self.root.s.theme_use(opts)
-                continue #jump to next loop
-            self.root.s.configure(name,**opts)                
+            self.widgets[name].master.columnconfigure(col_id,weight=stretch_col)                                    
                       
     def _config_widget(self,name,opts): 
         "config the widget with specified option"
