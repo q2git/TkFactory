@@ -127,7 +127,7 @@ if __name__ == '__main__':
     gui.widgets['mn2'].entryconfig(1,command=gui.stop)
     def fun(i):
         gui.widgets['mn1'].entryconfig(1,label='title{}'.format(i))
-        gui.widgets['mn2'].entryconfig(1,label='hello{}'.format(i))
+        gui.widgets['mn2'].entryconfig(1,label=gui.widgets['mn3'].entrycget(i,'label'))
     gui.widgets['mn3'].entryconfig(0,command=lambda :fun(1))
     gui.widgets['mn3'].entryconfig(1,command=lambda :fun(2))
     gui.widgets['mn3'].entryconfig(2,command=lambda :fun(3))    
