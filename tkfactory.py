@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Aug 25 13:29:02 2016
-
 @author: q2git
 """
 
@@ -11,14 +10,14 @@ import codecs
 import ast
 
     
-class TkFactory:    
+class TkFactory(object):    
     def __init__(self, filename):
+        root, styles, widgets = self.read_ini_file(filename)
         #None is for creating widget without specifying parent
         self.widgets = {None:None} 
         self.widgets['ROOT'] =  tk.Tk()
         self.root = self.widgets['ROOT'] 
-        self.textvariables = {}
-        root, styles, widgets = self.read_ini_file(filename)
+        self.textvariables = {} 
         self.config_root(root) 
         self.config_styles(styles)
         self.__createWidgets(widgets)
@@ -38,12 +37,12 @@ class TkFactory:
         """ Config the root window 
         """     
         geometry = opts.pop('GEOMETRY', None)
-        resize = opts.pop('RESIZEABLE', None)
+        resizable = opts.pop('RESIZEABLE', {})
         iconbitmap = opts.pop('ICONBITMAP', None)
         title = opts.pop('TITLE', None)
         self.root.config(**opts)       
         self.root.geometry(geometry)
-        self.root.resizable(width=resize[0],height=resize[1])
+        self.root.resizable(**resizable)
         self.root.iconbitmap(iconbitmap)
         self.root.title(title)    
                  
