@@ -12,51 +12,42 @@ import ast
     
 class TkFactory(object):    
     def __init__(self, filename):
-        root, styles, widgets = self.read_ini_file(filename)
+        cfgs = self.read_ini_file(filename)
         #None is for creating widget without specifying parent
-        self.widgets = {None:None} 
-        self.widgets['ROOT'] =  tk.Tk()
-        self.root = self.widgets['ROOT'] 
+        self.widgets = {None:None,'ROOT':tk.Tk()} 
         self.textvariables = {} 
-        self.config_root(root) 
-        self.config_styles(styles)
-        self.__createWidgets(widgets)
+        self.config_root(cfgs.pop('ROOT', {})) 
+        self.config_styles(cfgs.pop('STYLES', []))
+        self.createWidgets(cfgs.pop('WIDGETS', []))
         
     @staticmethod
     def read_ini_file(filename):
         """ Read gui configurations from the ini file 
         """
         with codecs.open(filename,'r','utf_8_sig') as f:
-            cfg = ast.literal_eval(f.read())   
-        root = cfg.pop('ROOT', {})
-        styles = cfg.pop('STYLES', [])
-        widgets = cfg.pop('WIDGETS', [])
-        return (root, styles, widgets)
+            cfgs = ast.literal_eval(f.read()) 
+        return cfgs
         
     def config_root(self, opts):
         """ Config the root window 
-        """     
-        geometry = opts.pop('GEOMETRY', None)
-        resizable = opts.pop('RESIZEABLE', {})
-        iconbitmap = opts.pop('ICONBITMAP', None)
-        title = opts.pop('TITLE', None)
-        self.root.config(**opts)       
-        self.root.geometry(geometry)
-        self.root.resizable(**resizable)
-        self.root.iconbitmap(iconbitmap)
-        self.root.title(title)    
+        """         
+        self.widgets['ROOT'].geometry(opts.pop('GEOMETRY', None))
+        self.widgets['ROOT'].resizable(**opts.pop('RESIZEABLE', {}))
+        self.widgets['ROOT'].iconbitmap( opts.pop('ICONBITMAP', None))
+        self.widgets['ROOT'].title(opts.pop('TITLE', None))    
+        self.widgets['ROOT'].config(**opts)
                  
     def config_styles(self, styles):
         """ Config the ttk styles 
         """         
-        self.root.s=ttk.Style()
+        self.widgets['ROOT'].style=ttk.Style()
         for name, opts in styles:
             if name == 'theme_use':
-                self.root.s.theme_use(opts)
+                self.widgets['ROOT'].style.theme_use(opts)
                 continue #jump to next loop
-            self.root.s.configure(name,**opts) 
+            self.widgets['ROOT'].style.configure(name,**opts) 
             
-    def __createWidgets(self, widgets):
+    def createWidgets(self, widgets):
         """ Create the widgets
         """
         for name, widget, parent, grid, opts in widgets:
@@ -147,10 +138,10 @@ class TkFactory(object):
                 widget.master.columnconfigure(col, weight=stretch_col)  
                        
     def run(self):
-        self.root.mainloop()
+        self.widgets['ROOT'].mainloop()
     
     def stop(self):
-        self.root.destroy()
+        self.widgets['ROOT'].destroy()
     
                                 
 if __name__ == '__main__':
