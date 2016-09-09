@@ -13,8 +13,7 @@ import ast
 class TkFactory(object):    
     def __init__(self, filename):
         cfgs = self.read_ini_file(filename)
-        #None is for creating widget without specifying parent
-        self.widgets = {None:None,'ROOT':tk.Tk()} 
+        self.widgets = {'ROOT':tk.Tk()} 
         self.textvariables = {} 
         self.config_root(cfgs.pop('ROOT', {})) 
         self.config_styles(cfgs.pop('STYLES', []))
@@ -55,7 +54,7 @@ class TkFactory(object):
             self.widgets[name] = getattr(
                                 tk if widget.startswith('tk.') else ttk, 
                                 widget[widget.find('.')+1:]
-                                )(self.widgets[parent])                
+                                )(self.widgets.get(parent))                
             self.config_special_options(name, opts)           
             self.config_options(name, opts)  
             self.config_grid(name, grid)                                        
