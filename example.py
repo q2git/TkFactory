@@ -27,6 +27,7 @@ class Gui(TkFactory):
         self.pg1.start(50)
         
         self.b2.config(command=self.show_hide_f5)
+        self.b3.config(command=lambda: self.list1.listvar.set(self.style.theme_names()))
         self.e1.bind('<FocusOut>', lambda _: self.show_var(self.e1))
         self.cb1.bind("<<ComboboxSelected>>", lambda _: self.show_var(self.cb1))
         self.tree1.bind('<<TreeviewSelect>>', self.sel_tree)
@@ -35,6 +36,7 @@ class Gui(TkFactory):
         index = self.list1.curselection()[0]       
         var = self.list1.get(index)
         msgbox.showinfo(message='{0}-{1}'.format(index,var))
+        self.style.theme_use(var)
         
     def update_tree(self): 
         self.tree1.delete(*self.tree1.get_children())

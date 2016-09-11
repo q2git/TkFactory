@@ -161,8 +161,7 @@ class TkFactory(object):
 def get_cfgs(filename):
     """ Read gui configurations from the ini file """       
     with codecs.open(filename,'r','utf_8_sig') as f:
-        return ast.literal_eval(f.read())         
-                
+        return ast.literal_eval(f.read())                       
 
                                 
 if __name__ == '__main__':
