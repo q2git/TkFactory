@@ -4,52 +4,73 @@ Created on Sat Sep 03 13:49:24 2016
 @author: q2git
 """
 from tkfactory import TkFactory
+import tkMessageBox as msgbox
+import copy
 
 class Gui(TkFactory):
     def __init__(self, filename):
         super(Gui, self).__init__(filename)
         self.config_cmd()
-        self.widgets['tp1'].grid_remove()
+        self.update_tree()
         
     def config_cmd(self):
-        self.widgets['b1'].config(command=lambda: self.config_grid('rdbt1',(3, 1, 1, 1, 'ns', 1, 1)))
-        self.widgets['rdbt1'].config(command=lambda: self.textvariables['ckbt1'].set('CheckButton1'))
-        self.widgets['ckbt1'].config(command=lambda: self.textvariables['ckbt1'].set(self.textvariables['rdbt1'].get()))
-        self.widgets['mn3'].entryconfig(0,command=self.stop)
+        self.b1.config(command = self.show_toplevel)
+  
+        self.rdbt1.config(command=lambda: self.show_var(self.rdbt1))
+        self.ckbt1.config(command=lambda: self.show_var(self.ckbt1))
         
-        self.widgets['mn1'].entryconfig(0,command=self.switch)
-        self.widgets['mn1'].entryconfig(1,command=lambda: self.fun(1))
-        self.widgets['mn-3'].entryconfig(0,command=lambda: self.textvariables['mnbt1'].set('HELLO'))    
-        self.widgets['s1'].config(command=lambda x=0:self.textvariables['ls1'].set(self.widgets['s1'].get()))
-        self.widgets['pg1'].start(50)
+        self.mn1.entryconfig(0,command=lambda: self.menu_cmd(0))
+        self.mn1.entryconfig(1,command=lambda: self.menu_cmd(1))
+        self.mn1.entryconfig(2,command=lambda: self.menu_cmd(2))
         
-        self.widgets['gui2_b1'].config(command=self.widgets['tp1'].grid_remove)
-        self.widgets['gui2_e1'].bind('<FocusOut>', self.fun1)
+        #self.widgets['s1'].config(command=lambda x=0:self.textvariables['ls1'].set(self.widgets['s1'].get()))
+        #self.widgets['pg1'].start(50)
         
-        self.widgets['tree1'].bind('<<TreeviewSelect>>', self.tree_sel)
-        for name in self.textvariables.keys():
-            #self.textvariables[name].set(name)
-            self.widgets['tree1'].insert('', 0, iid=name,text=name.upper(), 
-                values=tuple(self.widgets[name].keys())#('a','b',234,324,'c','你好',),
-                )
+        self.b2.config(command=self.show_hide_f5)
+        self.e1.bind('<FocusOut>', lambda _: self.show_var(self.e1))
+        self.cb1.bind("<<ComboboxSelected>>", lambda _: self.show_var(self.cb1))
+        self.tree1.bind('<<TreeviewSelect>>', self.sel_tree)
                 
-    def switch(self):
-        self.widgets['tp1'].grid()
-
+    def update_tree(self): 
+        self.tree1.delete(*self.tree1.get_children())
+        for name in self.widgetNames:
+            widget = getattr(self, name)
+            self.tree1.insert('', 0, iid=name,text=name.upper(), 
+                values=tuple(widget.keys()))
     
-    def fun1(self, event):
-        self.textvariables['e1'].set(self.textvariables['gui2_e1'].get())
+    def show_hide_f5(self):
+        if self.f5.grid_info():
+            self.f5.grid_remove()
+            self.b2.var.set('Show f5')
+        else:
+            self.f5.grid()
+            self.b2.var.set('Hide f5')
+    
+    def show_var(self, widget):
+        if hasattr(widget, 'var'):
+            message = widget.var.get()
+        else:
+            message = 'No var'
+        msgbox.showinfo(message = message)
         
-    def fun(self,i):
-        self.widgets['mn3'].entryconfig(1,label='title{}'.format(i))
-        self.widgets['mn3'].entryconfig(1,label=self.widgets['mn3'].entrycget(i,'label'))            
+    def menu_cmd(self, index):
+        label = self.mn1.entrycget(index,'label')
+        self.mn1.entryconfig(index, label= label+'-X')
 
-    def tree_sel(self,event):
-        widget=self.widgets['tree1']
-        val= widget.item(widget.selection()[0],'values')
-        self.widgets['cb1'].config(values=list(val))
+    def sel_tree(self,event):
+        val= self.tree1.item(self.tree1.selection()[0],'values')
+        self.txt1.insert('end', val)
+        self.txt1.insert('end', '\n')
         
-            
+    def show_toplevel(self):
+        top = copy.deepcopy(self.topWindows['TOP_WINDOW1'])
+        self.createWidgets(top)
+        self.top1.transient(self.root)
+        self.top1.grab_set() #modal window
+        self.top1.focus() 
+
+    def run(self):
+        self.root.mainloop()           
             
 if __name__ == '__main__':
     gui = Gui('gui.ini')
