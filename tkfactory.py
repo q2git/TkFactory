@@ -13,15 +13,9 @@ import ast
 class TkFactory(object):    
     def __init__(self, filename):
         self.topWindows = {} #store configs of all toplevel windows
-        self.widgetNames = set() #no duplication in names
-        self.createWidgets(self.read_ini_file(filename))
+        self.widgetNames = set() #no duplication in widgetNames
+        self.createWidgets(get_cfgs(filename))
         
-    @staticmethod
-    def read_ini_file(filename):
-        """ Read gui configurations from the ini file """       
-        with codecs.open(filename,'r','utf_8_sig') as f:
-            return ast.literal_eval(f.read())         
-            
     def createWidgets(self, widgets_cfgs):
         """ Create the widgets """
         
@@ -30,8 +24,9 @@ class TkFactory(object):
                   'tk.PanedWindow':self._panedwindow, 
                   'ttk.Treeview': self._treeview,
                   'ttk.Style': self._styles,
-                  'tk.Tk': self._root,
-                  'tk.Toplevel': self._root,
+                  'tk.Tk': self._toplevel,
+                  'tk.Toplevel': self._toplevel,
+                  'tk.Listbox': self._listbox,
                   }
                   
         for widget_cfgs in widgets_cfgs:
@@ -61,8 +56,8 @@ class TkFactory(object):
         if hasattr(widget, 'keys'): #must be a widget not the style
             if 'textvariable' in widget.keys():
                 setattr(widget, 'var', tk.StringVar())
-                widget.config(textvariable=getattr(widget, 'var'))
-                getattr(widget, 'var').set(opts.pop('text', None))                     
+                widget.config(textvariable=widget.var)
+                widget.var.set(opts.pop('text', None))                     
             #set the rest of options    
             widget.config(**opts)
             #store all widgets name
@@ -84,7 +79,7 @@ class TkFactory(object):
                 widget.master.columnconfigure(grid.get('column'), 
                                               weight=stretch_col)  
 
-    def _root(self, name, opts):
+    def _toplevel(self, name, opts):
         """ Config the root/toplevel window """ 
         widget = getattr(self, name)         
         widget.geometry(opts.pop('GEOMETRY', None))
@@ -155,26 +150,21 @@ class TkFactory(object):
         widget = getattr(self, name)
         for child, kw in opts.pop('PANES', []):
             widget.add(getattr(self, child), **kw)
-        
+
+    def _listbox(self, name, opts):
+        """Config the listbox """
+        widget = getattr(self, name)
+        setattr(widget, 'listvar', tk.StringVar())
+        widget.config(listvariable=widget.listvar)
+        widget.listvar.set(opts.pop('listvariable', None))           
+
+def get_cfgs(filename):
+    """ Read gui configurations from the ini file """       
+    with codecs.open(filename,'r','utf_8_sig') as f:
+        return ast.literal_eval(f.read())         
+                
 
                                 
 if __name__ == '__main__':
-    import copy
-    gui = TkFactory('gui.ini')
-    def update_tree(): 
-        gui.tree1.delete(*gui.tree1.get_children())
-        for name in gui.widgetNames:
-            widget = getattr(gui, name)
-            gui.tree1.insert('', 0, iid=name,text=name.upper(), 
-                values=tuple(widget.keys()))
-    def cmd():
-        top = copy.deepcopy(gui.topWindows['TOP_WINDOW1'])
-        gui.createWidgets(top)
-        gui.top1.transient(gui.root)
-        gui.top1.grab_set() #modal window
-        gui.top1.focus()
-               
-    gui.b1.config(command = cmd)
-
-    update_tree()        
+    gui = TkFactory('gui.ini')    
     gui.root.mainloop()

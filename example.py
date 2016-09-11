@@ -18,19 +18,24 @@ class Gui(TkFactory):
   
         self.rdbt1.config(command=lambda: self.show_var(self.rdbt1))
         self.ckbt1.config(command=lambda: self.show_var(self.ckbt1))
-        
+        self.list1.bind("<<ListboxSelect>>", self.get_list)
         self.mn1.entryconfig(0,command=lambda: self.menu_cmd(0))
         self.mn1.entryconfig(1,command=lambda: self.menu_cmd(1))
         self.mn1.entryconfig(2,command=lambda: self.menu_cmd(2))
         
-        #self.widgets['s1'].config(command=lambda x=0:self.textvariables['ls1'].set(self.widgets['s1'].get()))
-        #self.widgets['pg1'].start(50)
+        self.sc1.config(command=lambda _:self.l1.var.set(self.sc1.get()))
+        self.pg1.start(50)
         
         self.b2.config(command=self.show_hide_f5)
         self.e1.bind('<FocusOut>', lambda _: self.show_var(self.e1))
         self.cb1.bind("<<ComboboxSelected>>", lambda _: self.show_var(self.cb1))
         self.tree1.bind('<<TreeviewSelect>>', self.sel_tree)
-                
+
+    def get_list(self, event):
+        index = self.list1.curselection()[0]       
+        var = self.list1.get(index)
+        msgbox.showinfo(message='{0}-{1}'.format(index,var))
+        
     def update_tree(self): 
         self.tree1.delete(*self.tree1.get_children())
         for name in self.widgetNames:
