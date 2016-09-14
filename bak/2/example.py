@@ -5,26 +5,29 @@ Created on Sat Sep 03 13:49:24 2016
 """
 from tkfactory import TkFactory
 import tkMessageBox as msgbox
+import copy
 
 class Gui(TkFactory):
-    def __init__(self, filename, master=None):
-        super(Gui, self).__init__(filename, master)
+    def __init__(self, filename):
+        super(Gui, self).__init__(filename)
         self.config_cmd()
         self.update_tree()
         
     def config_cmd(self):
-        self.b1.config(command= self.show_toplevel)
-        self.b2.config(command= self.show_hide_tree)
-        self.b3.config(command= self.change_menu)        
+        self.b1.config(command = self.show_toplevel)
+  
         self.rdbt1.config(command=lambda: self.show_var(self.rdbt1))
         self.ckbt1.config(command=lambda: self.show_var(self.ckbt1))
         self.list1.bind("<<ListboxSelect>>", self.get_list)
-        self.list1.bind("<FocusIn>",lambda _: self.list1.listvar.set(self.style.theme_names()))        
-      
+        self.mn1.entryconfig(0,command=lambda: self.menu_cmd(0))
+        self.mn1.entryconfig(1,command=lambda: self.menu_cmd(1))
+        self.mn1.entryconfig(2,command=lambda: self.menu_cmd(2))
+        
         self.sc1.config(command=lambda _:self.l1.var.set(self.sc1.get()))
         self.pg1.start(50)
         
-
+        self.b2.config(command=self.show_hide_f5)
+        self.b3.config(command=lambda: self.list1.listvar.set(self.style.theme_names()))
         self.e1.bind('<FocusOut>', lambda _: self.show_var(self.e1))
         self.cb1.bind("<<ComboboxSelected>>", lambda _: self.show_var(self.cb1))
         self.tree1.bind('<<TreeviewSelect>>', self.sel_tree)
@@ -37,17 +40,17 @@ class Gui(TkFactory):
         
     def update_tree(self): 
         self.tree1.delete(*self.tree1.get_children())
-        for name, widget in self.__dict__.items():
-            if hasattr(widget, 'keys'):
-                self.tree1.insert('', 0, iid=name,text=name.upper(), 
-                    values=tuple(widget.keys()))
+        for name in self.widgetNames:
+            widget = getattr(self, name)
+            self.tree1.insert('', 0, iid=name,text=name.upper(), 
+                values=tuple(widget.keys()))
     
-    def show_hide_tree(self):
-        if self.tree1.master.grid_info():
-            self.tree1.master.grid_remove()
+    def show_hide_f5(self):
+        if self.f5.grid_info():
+            self.f5.grid_remove()
             self.b2.var.set('Show f5')
         else:
-            self.tree1.master.grid()
+            self.f5.grid()
             self.b2.var.set('Hide f5')
     
     def show_var(self, widget):
@@ -57,34 +60,25 @@ class Gui(TkFactory):
             message = 'No var'
         msgbox.showinfo(message = message)
         
-    def menu_cmd(self, name):
-        txt = self.mn1.entrycget(name,'label')
-        self.mn1.entryconfig(name, label= txt+'-X')
-        
-    def change_menu(self):
-        self.b3.var.set('Change Menu')
-        #self.mn0.entryconfig('Menu1', state="disabled")
-        self.mn1.entryconfig('cmd1',command=lambda: self.menu_cmd('cmd1'))
-        self.mn1.entryconfig(2,command=lambda: self.menu_cmd(2))
-        self.mn1.entryconfig(3,command=lambda: self.menu_cmd(3))
-        
+    def menu_cmd(self, index):
+        label = self.mn1.entrycget(index,'label')
+        self.mn1.entryconfig(index, label= label+'-X')
+
     def sel_tree(self,event):
         val= self.tree1.item(self.tree1.selection()[0],'values')
         self.txt1.insert('end', val)
         self.txt1.insert('end', '\n')
         
     def show_toplevel(self):
-        import Tkinter as tk
-        top = tk.Toplevel()
-        g = Gui('gui.ini', top)
-        top.grab_set() #modal window
-        top.focus() 
-        g.b1.config(command=lambda: g.b1.var.set('this is toplevel'))
+        top = copy.deepcopy(self.topWindows['TOP_WINDOW1'])
+        self.createWidgets(top)
+        self.top1.transient(self.root)
+        self.top1.grab_set() #modal window
+        self.top1.focus() 
 
     def run(self):
-        self.ROOT.mainloop()           
+        self.root.mainloop()           
             
 if __name__ == '__main__':
     gui = Gui('gui.ini')
-    #print gui.__dict__
     gui.run()
