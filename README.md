@@ -1,2 +1,2 @@
 # TkFactory
-simplify Tkinter and ttk GUI programing
+simply run the examply.py to know how.
