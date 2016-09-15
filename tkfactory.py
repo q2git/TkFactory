@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-update: 20160914
+update: 20160915
 @author: q2git
 """
 
@@ -9,130 +9,145 @@ import ttk
 import codecs
 import ast
 
-class TkFactory(object):    
+class TkFactory(tk.Tk, tk.Toplevel):    
     def __init__(self, filename, master=None):
-        if master:
-            self.ROOT = tk.Frame(master)
-            config_grid(self.ROOT, {'sticky':'nsew'})
+        if master: #choose root widget
+            tk.Toplevel.__init__(self,master)
         else:
-            self.ROOT = tk.Tk()
-        self.createWidgets(get_cfgs(filename))
-       
+            tk.Tk.__init__(self)
+        cfgs = get_cfgs(filename)  
+        self.configRoot(**cfgs.pop(0))
+        self.createWidgets(cfgs)
+
+    def configRoot(self, **kwargs):
+        """ Config the root window """         
+        self.geometry(kwargs.pop('GEOMETRY', None))
+        self.resizable(**kwargs.pop('RESIZEABLE', {}))
+        self.iconbitmap( kwargs.pop('ICONBITMAP', None))
+        self.title(kwargs.pop('TITLE', None))    
+        self.config(kwargs)
+        
     def createWidgets(self, widgets_cnf): 
-        w = {
-                'TREEVIEW': _Tree, 'LISTBOX': _Listbox,
-                'STYLE': _Style, 'MENU': _Menu,
-                'ADD': add_children, 
+        f = {
+            'TREEVIEW': create_Treeview, 'LISTBOX': create_Listbox,
+            'STYLE': create_Style, 'MENU': create_Menu, 'ADD': add_Children, 
             }
 
         for cnf in widgets_cnf:
-            name, s_widget, parent = cnf.pop('ATTR')
-            master = getattr(self, parent, None)
-            
-            if s_widget in w.keys():
-                w[s_widget](self, name, master, cnf)
-            else:
-                setattr(self, name, 
-                        getattr(
-                                tk if s_widget.startswith('tk.') else ttk, 
-                                s_widget[s_widget.find('.')+1:]
-                                )(master)
-                        )
+            name, kind, parent_ = cnf.pop('ATTR')
+            parent = getattr(self, parent_, self)        
+            fun = f.get(kind)
+            try:
+                if fun:
+                    widget = fun(self, PARENT=parent, **cnf)
+                else:
+                    widget = create_basicWidget(self, PARENT=parent, 
+                                                KIND=kind, **cnf)
+                setattr(self, name, widget)
+            except Exception as e:
+                print name, e
+       
 
-                grid = cnf.pop('GRID', None)
-                widget = getattr(self, name)
-                config_grid(widget, grid)
-                config_opts(widget, cnf) 
-
-           
-class _Menu(tk.Menu):
-    """ Menu widget """
-    def __init__(self, obj, name, master, cnf={}, **kwargs):
-        tk.Menu.__init__(self, master, **kwargs)
-        setattr(obj, name, self)
-        self._configMe(cnf)
-        
-    def _configMe(self, cnf):
-        label = cnf.get('title')
-        submenus = cnf.pop('SUBMENUS', None)
-        if isinstance(self.master, _Menu): #for meunu
-            self.master.add_cascade(label=label,menu=self,underline=0)
-        elif 'menu' in self.master.keys(): #for root,menubutton, etc.
-            self.master.config(menu=self)
-        if submenus: #add submenu
-            for kind, coption in submenus:
-                self.add(kind, **coption)              
-        
+def create_basicWidget(root, **kwargs):
+    """ create basic widget """
+    d = {'tk': tk, 'ttk': ttk}
+    parent = kwargs.pop('PARENT', root) #parent widget
+    cls, kind = kwargs.pop('KIND').split('.')
+    grid = kwargs.pop('GRID', None)
+    w = getattr(d[cls], kind)(parent)
+    config_grid(w, grid)
+    config_opts(w, kwargs)
+    return w     
+ 
+   
+def create_Menu(root, **kwargs):
+    """ create menu """
+    parent = kwargs.pop('PARENT', root) #parent widget
+    m = tk.Menu(parent)
+    label = kwargs.get('title')
+    submenus = kwargs.pop('SUBMENUS', None)
+    if isinstance(m.master, tk.Menu): #for meunu
+        m.master.add_cascade(label=label,menu=m,underline=0)
+    elif 'menu' in m.master.keys(): #for root,menubutton, etc.
+        m.master.config(menu=m)
+    if submenus: #add submenu
+        for kind, coption in submenus:
+            m.add(kind, **coption) 
+    return m
+                               
     
-class _Tree(ttk.Frame):
-    """ framed treeview with scrollbars """
-    def __init__(self, obj, name, master, cnf={}, **kwargs):
-        ttk.Frame.__init__(self, master, **kwargs)
-        self['padding'] = 1
-        self.tree =ttk.Treeview(self)
-        setattr(obj, name, self.tree)      
-        self._configMe(cnf)
-               
-    def _configMe(self, cnf):
-        grid = cnf.pop('GRID', None)
-        columns = cnf.pop('COLUMNS',None)
-        heading = cnf.pop('HEADING',None)
-        col_width = cnf.pop('COL_WIDTH',None)
-        icon_col = cnf.pop('ICON_COL',None) #(text,width)
-        VSB = cnf.pop('VSB',True)
-        HSB = cnf.pop('HSB',False)                    
-        if icon_col: #The icon column
-            self.tree.heading('#0',text=icon_col['text'])
-            self.tree.column('#0',width=icon_col['width'])      
-        if columns and heading and col_width:
-            self.tree.config(columns=columns)
-            for cid,text,width in zip(columns,heading,col_width):
-                self.tree.heading(cid,text=text) 
-                self.tree.column(cid,width=width)
-        
-        self.tree.config(**cnf)
-        self.tree.grid(row=0, column=0, sticky='nsew') 
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)        
-        add_scrollbar(self.tree, VSB, HSB)        
-        config_grid(self, grid)
+def create_Treeview(root, **kwargs):
+    """ framed treeview with scrollbars """   
+    parent = kwargs.pop('PARENT', root) #parent widget
+    frame = ttk.Frame(parent, padding=1)
+    tree =ttk.Treeview(frame)
+    
+    grid = kwargs.pop('GRID', None)
+    columns = kwargs.pop('COLUMNS',None)
+    heading = kwargs.pop('HEADING',None)
+    col_width = kwargs.pop('COL_WIDTH',None)
+    icon_col = kwargs.pop('ICON_COL',None) #(text,width)
+    VSB = kwargs.pop('VSB',True)
+    HSB = kwargs.pop('HSB',False) 
+                          
+    if icon_col: #The icon column
+        tree.heading('#0',text=icon_col['text'])
+        tree.column('#0',width=icon_col['width'])      
+    if columns and heading and col_width:
+        tree.config(columns=columns)
+        for cid,text,width in zip(columns,heading,col_width):
+            tree.heading(cid,text=text) 
+            tree.column(cid,width=width)
+
+    tree.config(kwargs)
+    add_scrollbar(tree, VSB, HSB) #add scrollbar for treeview  
+    tree.grid(row=0, column=0, sticky='nsew')        
+    config_grid(frame, grid) 
+    frame.rowconfigure(0, weight=1)
+    frame.columnconfigure(0, weight=1)      
+    return tree    
 
 
-class _Listbox(ttk.Frame):
+def create_Listbox(root, **kwargs):
     """ framed listbox with scrollbars """
-    def __init__(self, obj, name, master, cnf={}, **kwargs):
-        ttk.Frame.__init__(self, master, **kwargs)
-        self['padding'] = 1
-        self.listbox =tk.Listbox(self)
-        setattr(obj, name, self.listbox)   
-        self._configMe(cnf)
-        
-    def _configMe(self, cnf):
-        grid = cnf.pop('GRID', None)
-        VSB = cnf.pop('VSB',True)
-        HSB = cnf.pop('HSB',False) 
-        setattr(self.listbox, 'listvar', tk.StringVar())
-        self.listbox.config(listvariable=self.listbox.listvar)
-        self.listbox.listvar.set(cnf.pop('listvariable', None)) 
-        self.listbox.config(**cnf)
-        self.listbox.grid(row=0, column=0, sticky='nsew') 
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
-        add_scrollbar(self.listbox, VSB, HSB)        
-        config_grid(self, grid) 
-        
+    parent = kwargs.pop('PARENT', root) #parent widget
+    frame = ttk.Frame(parent, padding=1)
+    listbox = tk.Listbox(frame) 
+
+    grid = kwargs.pop('GRID', None)
+    VSB = kwargs.pop('VSB',True)
+    HSB = kwargs.pop('HSB',False) 
     
-class _Style(ttk.Style):
-    """ ttk style """
-    def __init__(self, obj, name, master, cnf={}):
-          ttk.Style.__init__(self, master)
-          setattr(obj, name, self)
-          self._createStyles(cnf)
-          
-    def _createStyles(self, cnf): 
-        self.theme_use(cnf.pop('THEME_USE', 'default'))
-        for style_name, style_opts in cnf.items():
-            self.configure(style_name, **style_opts)                 
+    setattr(listbox, 'listvar', tk.StringVar())
+    listbox.config(listvariable=listbox.listvar)
+    listbox.listvar.set(kwargs.pop('listvariable', None)) 
+    listbox.config(kwargs)
+    add_scrollbar(listbox, VSB, HSB)     
+    listbox.grid(row=0, column=0, sticky='nsew') 
+    config_grid(frame, grid)    
+    frame.rowconfigure(0, weight=1)
+    frame.columnconfigure(0, weight=1)            
+    return listbox    
+                 
+
+def create_Style(master, **kwargs):
+    """ create style """
+    cnf = kwargs.pop('style', {})
+    s = ttk.Style(master)
+    s.theme_use(cnf.pop('THEME_USE', 'default'))
+    for style_name, style_opts in cnf.items():
+        s.configure(style_name, **style_opts) 
+    return s
+ 
+
+def add_Children(root, **kwargs):
+    """ for panedwindow and notebook to add its children
+    """
+    parent = kwargs.pop('PARENT', root) #parent widget
+    children = kwargs.pop('CHILDREN', [])
+    for name, options in children:
+        child = getattr(root, name)
+        parent.add(child, **options)        
 
 
 def add_scrollbar(widget, vsb=True, hsb=True):
@@ -148,16 +163,7 @@ def add_scrollbar(widget, vsb=True, hsb=True):
         widget.configure(xscrollcommand=hsb.set)   
         hsb.grid(row=1, column=0, sticky='ew')  
         
-
-def add_children(obj, name, master, cnf={}):
-    """ for panedwindow and notebook to add its children
-    """
-    children = cnf.pop('CHILDREN', [])
-    for name, options in children:
-        child = getattr(obj, name)
-        master.add(child, **options)        
-
-
+        
 def config_grid(widget, grid):
     """config grid and stretching option for widget
     """
@@ -192,4 +198,4 @@ def get_cfgs(filename):
                                 
 if __name__ == '__main__':
     gui = TkFactory('gui.ini')
-    gui.ROOT.mainloop()
+    gui.mainloop()

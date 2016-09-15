@@ -8,8 +8,7 @@ import tkMessageBox as msgbox
 
 class Gui(TkFactory):
     def __init__(self, filename, master=None):
-        #super(Gui, self).__init__(filename, master)
-        TkFactory.__init__(self, filename, master)
+        super(Gui, self).__init__(filename, master)
         self.config_cmd()
         self.update_tree()
         
@@ -24,6 +23,7 @@ class Gui(TkFactory):
       
         self.sc1.config(command=lambda _:self.l1.var.set(self.sc1.get()))
         self.pg1.start(50)
+        
 
         self.e1.bind('<FocusOut>', lambda _: self.show_var(self.e1))
         self.cb1.bind("<<ComboboxSelected>>", lambda _: self.show_var(self.cb1))
@@ -74,23 +74,15 @@ class Gui(TkFactory):
         self.txt1.insert('end', '\n')
         
     def show_toplevel(self):
-        self.wm_state('withdrawn')
-        g = Gui('gui.ini',self)
-        self.top = g
-        self.top.grab_set() #modal window
-        self.top.focus() 
-        g.b1.var.set('top level window')
-        g.b1.config(command=lambda: self.b1.var.set('changed by toplevel'))
-        self.top.protocol('WM_DELETE_WINDOW', self.close_top )
-    
-    def close_top(self):
-        self.wm_state('normal')
-        self.focus()
-        self.top.destroy()
+        import Tkinter as tk
+        top = tk.Toplevel()
+        g = Gui('gui.ini', top)
+        top.grab_set() #modal window
+        top.focus() 
+        g.b1.config(command=lambda: g.b1.var.set('this is toplevel'))
 
     def run(self):
-        self.mainloop()           
-
+        self.ROOT.mainloop()           
             
 if __name__ == '__main__':
     gui = Gui('gui.ini')
