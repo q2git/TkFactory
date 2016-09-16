@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-update: 20160916
+update: 20160915
 @author: q2git
 """
 
@@ -29,9 +29,8 @@ class TkFactory(tk.Tk, tk.Toplevel):
         
     def createWidgets(self, widgets_cnf): 
         f = {
-            'TREEVIEW':create_Treeview, 'LISTBOX':create_Listbox,
-            'STYLE':create_Style, 'MENU':create_Menu, 'ADD':add_Children,
-            'OPTIONMENU':create_OptionMenu, 'RADIOGROUP':create_RadioGroup,
+            'TREEVIEW': create_Treeview, 'LISTBOX': create_Listbox,
+            'STYLE': create_Style, 'MENU': create_Menu, 'ADD': add_Children, 
             }
 
         for cnf in widgets_cnf:
@@ -42,24 +41,14 @@ class TkFactory(tk.Tk, tk.Toplevel):
                 if fun:
                     widget = fun(self, PARENT=parent, **cnf)
                 else:
-                    widget = create_BasicWidget(self, PARENT=parent, 
+                    widget = create_basicWidget(self, PARENT=parent, 
                                                 KIND=kind, **cnf)
-                self.setAttr(name, widget)                    
+                setattr(self, name, widget)
             except Exception as e:
                 print name, e
+       
 
-    def setAttr(self, name, widget):
-        """ set the name attributes on root"""
-        if isinstance(widget, list):
-            setattr(self, name, widget.pop(0))
-            for i, w in enumerate(widget):
-                setattr(self, name+'_'+str(i), w)
-        else:
-            setattr(self, name, widget)
-
-
-
-def create_BasicWidget(root, **kwargs):
+def create_basicWidget(root, **kwargs):
     """ create basic widget """
     d = {'tk': tk, 'ttk': ttk}
     parent = kwargs.pop('PARENT', root) #parent widget
@@ -70,42 +59,27 @@ def create_BasicWidget(root, **kwargs):
     config_opts(w, kwargs)
     return w     
  
-       
-def create_OptionMenu(root, **kwargs):
-    """ create OptionMenu widget """
-    parent = kwargs.pop('PARENT', root) #parent widget
-    oplist = kwargs.pop('OPLIST', ())
-    grid = kwargs.pop('GRID', None)
-    var = tk.StringVar()
-    if oplist: var.set(oplist[0]) #set default option
-    w = tk.OptionMenu(parent, var, *oplist)
-    setattr(w, 'var', var)
-    config_grid(w, grid)
-    return w
- 
    
 def create_Menu(root, **kwargs):
     """ create menu """
     parent = kwargs.pop('PARENT', root) #parent widget
-    w = tk.Menu(parent)
+    m = tk.Menu(parent)
     label = kwargs.get('title')
     submenus = kwargs.pop('SUBMENUS', None)
-    w.config(**kwargs)
-    if isinstance(w.master, tk.Menu): #for meunu
-        w.master.add_cascade(label=label,menu=w,underline=0)
-    elif 'menu' in w.master.keys(): #for root,menubutton, etc.
-        w.master.config(menu=w)
+    if isinstance(m.master, tk.Menu): #for meunu
+        m.master.add_cascade(label=label,menu=m,underline=0)
+    elif 'menu' in m.master.keys(): #for root,menubutton, etc.
+        m.master.config(menu=m)
     if submenus: #add submenu
         for kind, coption in submenus:
-            w.add(kind, **coption) 
-    return w
+            m.add(kind, **coption) 
+    return m
                                
     
 def create_Treeview(root, **kwargs):
     """ framed treeview with scrollbars """   
     parent = kwargs.pop('PARENT', root) #parent widget
-    frms = kwargs.pop('FRMS', {}) #frame setting    
-    frame = ttk.Frame(parent, **frms)
+    frame = ttk.Frame(parent, padding=1)
     tree =ttk.Treeview(frame)
     
     grid = kwargs.pop('GRID', None)
@@ -137,8 +111,7 @@ def create_Treeview(root, **kwargs):
 def create_Listbox(root, **kwargs):
     """ framed listbox with scrollbars """
     parent = kwargs.pop('PARENT', root) #parent widget
-    frms = kwargs.pop('FRMS', {}) #frame setting    
-    frame = ttk.Frame(parent, **frms)
+    frame = ttk.Frame(parent, padding=1)
     listbox = tk.Listbox(frame) 
 
     grid = kwargs.pop('GRID', None)
@@ -155,34 +128,14 @@ def create_Listbox(root, **kwargs):
     frame.rowconfigure(0, weight=1)
     frame.columnconfigure(0, weight=1)            
     return listbox    
-  
-               
-def create_RadioGroup(root, **kwargs):
-    """ create radio group with frame """
-    grid = kwargs.pop('GRID', None)
-    frms = kwargs.pop('FRMS', {}) #frame setting
-    parent = kwargs.pop('PARENT', root) #parent widget
-    frame = tk.LabelFrame(parent, **frms)
-    config_grid(frame, grid)
-    txts = kwargs.pop('TXTS', ())
-    vals = kwargs.pop('VALS', ())
-    var = tk.StringVar()
-    rds = [var,]
-    for txt, val in zip(txts, vals):
-        rd = tk.Radiobutton(frame, variable=var, text=txt, value=val)
-        rd.config(**kwargs)
-        rd.grid()
-        rds.append(rd)
-    var.set(vals[0])    
-    return rds #return the shared variable var and radio buttons
- 
- 
-def create_Style(root, **kwargs):
+                 
+
+def create_Style(master, **kwargs):
     """ create style """
-    parent = kwargs.pop('PARENT', root)
-    s = ttk.Style(parent)
-    s.theme_use(kwargs.pop('THEME_USE', 'default'))
-    for style_name, style_opts in kwargs.items():
+    cnf = kwargs.pop('style', {})
+    s = ttk.Style(master)
+    s.theme_use(cnf.pop('THEME_USE', 'default'))
+    for style_name, style_opts in cnf.items():
         s.configure(style_name, **style_opts) 
     return s
  
@@ -192,13 +145,9 @@ def add_Children(root, **kwargs):
     """
     parent = kwargs.pop('PARENT', root) #parent widget
     children = kwargs.pop('CHILDREN', [])
-
     for name, options in children:
         child = getattr(root, name)
-        if isinstance(child, (tk.Listbox,ttk.Treeview)):
-            parent.add(child.master, **options)
-        else:
-            parent.add(child, **options)        
+        parent.add(child, **options)        
 
 
 def add_scrollbar(widget, vsb=True, hsb=True):
@@ -213,21 +162,6 @@ def add_scrollbar(widget, vsb=True, hsb=True):
         hsb = ttk.Scrollbar(master,orient="horizontal",command=widget.xview)
         widget.configure(xscrollcommand=hsb.set)   
         hsb.grid(row=1, column=0, sticky='ew')  
-
-
-def config_opts(widget, opts): 
-    """config options for widget 
-    """
-    if hasattr(widget, 'keys'): #must be a widget
-        if 'textvariable' in widget.keys():
-            setattr(widget, 'var', tk.StringVar())
-            widget.config(textvariable=widget.var)
-            widget.var.set(opts.pop('text', None)) 
-        if 'variable' in widget.keys():
-            setattr(widget, 'intvar', tk.IntVar())
-            widget.config(variable=widget.intvar)                    
-        #set the rest of options    
-        widget.config(**opts)
         
         
 def config_grid(widget, grid):
@@ -238,11 +172,23 @@ def config_grid(widget, grid):
         weight_col = grid.pop('WEIGHT_COL', 1)
         widget.grid(**grid)
         grid_info = widget.grid_info()      
-        row = grid.get('row',grid_info.get('row'))
-        col = grid.get('column',grid_info.get('column'))                                 
+        row = grid.get('row',grid_info.get('row',0))
+        col = grid.get('column',grid_info.get('column',0))                                 
         widget.master.rowconfigure(row, weight=weight_row)           
         widget.master.columnconfigure(col,  weight=weight_col)  
- 
+
+
+def config_opts(widget, opts): 
+    """config options for widget 
+    """
+    if hasattr(widget, 'keys'): #must be a widget
+        if 'textvariable' in widget.keys():
+            setattr(widget, 'var', tk.StringVar())
+            widget.config(textvariable=widget.var)
+            widget.var.set(opts.pop('text', None))                     
+        #set the rest of options    
+        widget.config(**opts)
+
 
 def get_cfgs(filename):
     """ Read gui configurations from the ini file """       
