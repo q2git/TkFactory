@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-update: 20160916
+update: 20160917
 @author: q2git
 """
 
@@ -88,16 +88,15 @@ def create_Menu(root, **kwargs):
     """ create menu """
     parent = kwargs.pop('PARENT', root) #parent widget
     w = tk.Menu(parent)
-    label = kwargs.get('title')
-    submenus = kwargs.pop('SUBMENUS', None)
+    copt = kwargs.pop('COPT',{}) #submenu,coption
+    items = kwargs.pop('ITEMS', [])
     w.config(**kwargs)
-    if isinstance(w.master, tk.Menu): #for meunu
-        w.master.add_cascade(label=label,menu=w,underline=0)
+    if isinstance(w.master, tk.Menu): #add submenu
+        w.master.add_cascade(menu=w, **copt)
     elif 'menu' in w.master.keys(): #for root,menubutton, etc.
         w.master.config(menu=w)
-    if submenus: #add submenu
-        for kind, coption in submenus:
-            w.add(kind, **coption) 
+    for kind, coption in items: #add menu items
+        w.add(kind, **coption) 
     return w
                                
     
@@ -105,7 +104,7 @@ def create_Treeview(root, **kwargs):
     """ framed treeview with scrollbars """   
     parent = kwargs.pop('PARENT', root) #parent widget
     frms = kwargs.pop('FRMS', {}) #frame setting    
-    frame = ttk.Frame(parent, **frms)
+    frame = tk.Frame(parent, **frms)
     tree =ttk.Treeview(frame)
     
     grid = kwargs.pop('GRID', None)
@@ -138,7 +137,7 @@ def create_Listbox(root, **kwargs):
     """ framed listbox with scrollbars """
     parent = kwargs.pop('PARENT', root) #parent widget
     frms = kwargs.pop('FRMS', {}) #frame setting    
-    frame = ttk.Frame(parent, **frms)
+    frame = tk.Frame(parent, **frms)
     listbox = tk.Listbox(frame) 
 
     grid = kwargs.pop('GRID', None)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Sep 03 13:49:24 2016
+update: 20160917
 @author: q2git
 """
 from tkfactory import TkFactory
@@ -15,24 +15,26 @@ class Gui(TkFactory):
         self.list1.listvar.set(self.style.theme_names())
         
     def config_cmd(self):
+        #bind_all
+        self.bind_all('<Control-KeyPress-q>', self.stop)
         #menu
         self.config_menu_cmd()
         #button
-        self.b1.config(command=lambda: self.showMsg(self.b1.get()))        
+        self.b1.config(command=lambda: self.showMsg(self.b1.var.get()))        
         self.bt1.config(command= self.show_toplevel)
         self.bt2.config(command= self.show_hide_tree)
-        #radio group
-        for n, w in self.__dict__.items(): 
-            if n.startswith('rdgp1_'): 
-                w.config(command=lambda: self.showMsg(self.rdgp1.get()))
+        #entry
+        self.e1.bind('<Any-KeyRelease>', lambda _: self.showMsg(self.e1.var.get()))
+        #radio group -bind to the shared variable
+        self.rdgp1.trace('w', lambda *_: self.showMsg(self.rdgp1.get()) )               
         #checkbutton        
-        self.ckbt1.config(command=lambda: self.showMsg(self.ckbt1.var.get()))
+        self.ckbt1.config(command=lambda:self.showMsg(
+            self.ckbt1.var.get() + ': ' + str(self.ckbt1.intvar.get()))
+            )
         #spinbox
         self.spb1.config(command=lambda: self.showMsg(self.spb1.get()))
         #optionmenu
-        self.opmn1.bind('<Double-Button-1>',
-                        lambda _: self.showMsg(self.opmn1.var.get())
-                        )
+        self.opmn1.var.trace('w',lambda *_: self.showMsg(self.opmn1.var.get()))
         #scale                
         self.sc2.config(command=lambda _:self.showMsg(self.sc2.get()))
         self.sc1.config(command=lambda _:self.showMsg(self.sc1.get()))       
@@ -40,12 +42,13 @@ class Gui(TkFactory):
         self.mnbt1_s.entryconfig('cmd1', command=lambda: self.showMsg('cmd1'))
         self.mnbt1_s.entryconfig('cmd2', command=lambda: self.showMsg('cmd2'))
         #listbox
-        self.list1.bind("<<ListboxSelect>>", self.get_list)     
+        self.list1.bind("<<ListboxSelect>>", self.get_list) 
+        #text
+        self.txt1.bind('<Double-1>',lambda _:self.txt1.delete('1.0', 'end'))
         #progressbar
         self.pg1.start(50)
-        self.pg1.bind('<Button-1>', lambda _:self.showMsg(self.pg1.intvar.get()))
-        #entry, combobox
-        self.e1.bind('<Any-KeyPress>', lambda _: self.showMsg(self.e1.var.get()))
+        self.pg1.bind('<1>', lambda _:self.showMsg(self.pg1.intvar.get()))
+        #combobox
         self.cb1.bind("<<ComboboxSelected>>", lambda _: self.showMsg(self.cb1.get()))
         #treeview
         self.tree1.bind('<<TreeviewSelect>>', self.sel_tree)
@@ -53,6 +56,21 @@ class Gui(TkFactory):
         self.cv1.bind("<Button-1>", self.xy)
         self.cv1.bind("<B1-Motion>", self.addLine)
         self.cv1.bind("<Double-Button-1>", lambda _: self.cv1.delete('all'))
+      
+    def show_toplevel(self):
+        self.wm_state('withdrawn')
+        g = Gui('gui.ini',self)
+        self.top = g
+        self.top.grab_set() #modal window
+        self.top.focus() 
+        g.bt1.var.set('top level window')
+        g.bt1.config(command=lambda: self.bt1.var.set('changed by toplevel'))
+        self.top.protocol('WM_DELETE_WINDOW', self.close_top )
+    
+    def close_top(self):
+        self.wm_state('normal')
+        self.focus()
+        self.top.destroy()
         
     #from: http://www.tkdocs.com/tutorial/canvas.html
     lastx, lasty = 0, 0 
@@ -81,12 +99,13 @@ class Gui(TkFactory):
     def show_hide_tree(self):
         if self.tree1.master.grid_info():
             self.tree1.master.grid_remove()
-            self.b2.var.set('Show Treeview')
+            self.bt2.var.set('Show Treeview')
         else:
             self.tree1.master.grid()
-            self.b2.var.set('Hide Treeview')
+            self.bt2.var.set('Hide Treeview')
     
     def showMsg(self, msg):
+        self.nb1.select(0)
         self.msg1.var.set('{0:20}'.format(msg))
         
     def config_menu_cmd(self):
@@ -104,27 +123,16 @@ class Gui(TkFactory):
         
     def sel_tree(self,event):
         val= self.tree1.item(self.tree1.selection()[0],'values')
-        self.txt1.insert('end', val)
-        self.txt1.insert('end', '\n')   
-        
-    def show_toplevel(self):
-        self.wm_state('withdrawn')
-        g = Gui('gui.ini',self)
-        self.top = g
-        self.top.grab_set() #modal window
-        self.top.focus() 
-        g.b1.var.set('top level window')
-        g.b1.config(command=lambda: self.b1.var.set('changed by toplevel'))
-        self.top.protocol('WM_DELETE_WINDOW', self.close_top )
-    
-    def close_top(self):
-        self.wm_state('normal')
-        self.focus()
-        self.top.destroy()
+        self.txt1.insert('1.0', '\n') #'end'
+        self.txt1.insert('1.0', val) 
+        self.nb1.select(self.txt1)
 
     def run(self):
         self.mainloop()           
-
+    
+    def stop(self, event):
+        print 'Event:', event.keycode
+        self.destroy()
             
 if __name__ == '__main__':
     gui = Gui('gui.ini')
