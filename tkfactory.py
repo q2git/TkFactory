@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-update: 20160917
+update: 20160918
 @author: q2git
 """
 
@@ -26,7 +26,7 @@ class TkFactory(tk.Tk, tk.Toplevel):
         self.resizable(**kwargs.pop('RESIZEABLE', {}))
         ico = kwargs.pop('ICONBITMAP', None)
         if ico: 
-            self.iconbitmap(os.path.join(self.cfgdir, ico))
+            self.iconbitmap( os.path.join(self.cfgdir, ico))
         self.title(kwargs.pop('TITLE', None))    
         self.config(kwargs)
         
@@ -60,7 +60,7 @@ def create_BasicWidget(root, **kwargs):
     grid = kwargs.pop('GRID', None)
     w = getattr(d[cls], kind)(parent)
     config_grid(w, grid)
-    config_opts(w, kwargs)
+    config_options(w, kwargs)
     return w     
  
        
@@ -97,7 +97,7 @@ def create_Treeview(root, **kwargs):
     """ framed treeview with scrollbars """   
     parent = kwargs.pop('PARENT', root) #parent widget
     frms = kwargs.pop('FRMS', {}) #frame setting    
-    frame = tk.Frame(parent, **frms)
+    frame = ttk.Frame(parent, **frms)
     tree =ttk.Treeview(frame)
     
     grid = kwargs.pop('GRID', None)
@@ -129,33 +129,32 @@ def create_Treeview(root, **kwargs):
 def create_Listbox(root, **kwargs):
     """ framed listbox with scrollbars """
     parent = kwargs.pop('PARENT', root) #parent widget
-    frms = kwargs.pop('FRMS', {}) #frame setting    
-    frame = tk.Frame(parent, **frms)
-    listbox = tk.Listbox(frame) 
-
+    #config frame
+    frms = kwargs.pop('FRMS', {}) #frame options    
+    frame = ttk.Frame(parent, **frms)
+    frame.rowconfigure(0, weight=1)
+    frame.columnconfigure(0, weight=1) 
     grid = kwargs.pop('GRID', None)
+    config_grid(frame, grid)
+    #config listbox    
+    listbox = tk.Listbox(frame) 
+    listbox.grid(row=0, column=0, sticky='nsew')
     VSB = kwargs.pop('VSB',True)
     HSB = kwargs.pop('HSB',False) 
-    
-    setattr(listbox, 'listvar', tk.StringVar())
-    listbox.config(listvariable=listbox.listvar)
-    listbox.listvar.set(kwargs.pop('listvariable', None)) 
-    listbox.config(kwargs)
-    add_scrollbar(listbox, VSB, HSB)     
-    listbox.grid(row=0, column=0, sticky='nsew') 
-    config_grid(frame, grid)    
-    frame.rowconfigure(0, weight=1)
-    frame.columnconfigure(0, weight=1)            
+    add_scrollbar(listbox, VSB, HSB)                     
+    config_options(listbox, kwargs)            
     return listbox    
   
                
 def create_RadioGroup(root, **kwargs):
     """ create radio group with frame """
-    grid = kwargs.pop('GRID', None)
-    frms = kwargs.pop('FRMS', {}) #frame setting
     parent = kwargs.pop('PARENT', root) #parent widget
-    frame = tk.LabelFrame(parent, **frms)
+    #config frame
+    frms = kwargs.pop('FRMS', {}) #frame setting    
+    frame = ttk.LabelFrame(parent, **frms)
+    grid = kwargs.pop('GRID', None)
     config_grid(frame, grid)
+    #config radiobuttons
     txts = kwargs.pop('TXTS', ())
     vals = kwargs.pop('VALS', ())
     var = tk.StringVar()
@@ -205,19 +204,22 @@ def add_scrollbar(widget, vsb=True, hsb=True):
         hsb.grid(row=1, column=0, sticky='ew')  
 
 
-def config_opts(widget, opts): 
+def config_options(widget, options): 
     """config options for widget 
     """
+    v = {#key: w.var, type, option, default value
+         'textvariable':('var', tk.StringVar, 'text', ''), 
+         'listvariable':('listvar', tk.StringVar, 'LIST', ''),
+         'variable': ('intvar', tk.IntVar, 'INT', 0)
+         }
     if hasattr(widget, 'keys'): #must be a widget
-        if 'textvariable' in widget.keys():
-            setattr(widget, 'var', tk.StringVar())
-            widget.config(textvariable=widget.var)
-            widget.var.set(opts.pop('text', None)) 
-        if 'variable' in widget.keys():
-            setattr(widget, 'intvar', tk.IntVar())
-            widget.config(variable=widget.intvar)                    
+        for key, (v1,v2,v3,v4)in v.items():
+            if key in widget.keys():
+                setattr(widget, v1, v2())
+                widget[key] = getattr(widget, v1)
+                getattr(widget, v1).set(options.pop(v3, v4))                
         #set the rest of options    
-        widget.config(**opts)
+        widget.config(**options)
         
         
 def config_grid(widget, grid):
@@ -226,6 +228,8 @@ def config_grid(widget, grid):
     if isinstance(grid, dict):
         weight_row = grid.pop('WEIGHT_ROW', 1)
         weight_col = grid.pop('WEIGHT_COL', 1)
+        grid['padx'] = grid.pop('padx', 2) #defalut padx=2
+        grid['pady'] = grid.pop('pady', 2) #defalut pady=2
         widget.grid(**grid)
         grid_info = widget.grid_info()      
         row = grid.get('row',grid_info.get('row'))
