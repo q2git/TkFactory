@@ -8,6 +8,7 @@ import Tkinter as tk
 import ttk
 import codecs
 import ast
+import os.path
 
 class TkFactory(tk.Tk, tk.Toplevel):    
     def __init__(self, filename, master=None):
@@ -15,7 +16,7 @@ class TkFactory(tk.Tk, tk.Toplevel):
             tk.Toplevel.__init__(self,master)
         else:
             tk.Tk.__init__(self)
-        cfgs = get_cfgs(filename)  
+        self.cfgdir, cfgs = get_cfgs(filename)  
         self.configRoot(**cfgs.pop(0))
         self.createWidgets(cfgs)
 
@@ -23,7 +24,9 @@ class TkFactory(tk.Tk, tk.Toplevel):
         """ Config the root window """         
         self.geometry(kwargs.pop('GEOMETRY', None))
         self.resizable(**kwargs.pop('RESIZEABLE', {}))
-        self.iconbitmap( kwargs.pop('ICONBITMAP', None))
+        ico = kwargs.pop('ICONBITMAP', None)
+        if ico: 
+            self.iconbitmap(os.path.join(self.cfgdir, ico))
         self.title(kwargs.pop('TITLE', None))    
         self.config(kwargs)
         
@@ -44,19 +47,9 @@ class TkFactory(tk.Tk, tk.Toplevel):
                 else:
                     widget = create_BasicWidget(self, PARENT=parent, 
                                                 KIND=kind, **cnf)
-                self.setAttr(name, widget)                    
+                setattr(self, name, widget) #set attribution on root                    
             except Exception as e:
                 print name, e
-
-    def setAttr(self, name, widget):
-        """ set the name attributes on root"""
-        if isinstance(widget, list):
-            setattr(self, name, widget.pop(0))
-            for i, w in enumerate(widget):
-                setattr(self, name+'_'+str(i), w)
-        else:
-            setattr(self, name, widget)
-
 
 
 def create_BasicWidget(root, **kwargs):
@@ -166,14 +159,12 @@ def create_RadioGroup(root, **kwargs):
     txts = kwargs.pop('TXTS', ())
     vals = kwargs.pop('VALS', ())
     var = tk.StringVar()
-    rds = [var,]
     for txt, val in zip(txts, vals):
         rd = tk.Radiobutton(frame, variable=var, text=txt, value=val)
         rd.config(**kwargs)
         rd.grid()
-        rds.append(rd)
-    var.set(vals[0])    
-    return rds #return the shared variable var and radio buttons
+    var.set(None) #default no radiobox selected   
+    return var #return the shared variable
  
  
 def create_Style(root, **kwargs):
@@ -244,9 +235,11 @@ def config_grid(widget, grid):
  
 
 def get_cfgs(filename):
-    """ Read gui configurations from the ini file """       
+    """ Read gui configurations from the ini file """
+    cfgdir = os.path.dirname(os.path.abspath(filename))       
     with codecs.open(filename,'r','utf_8_sig') as f:
-        return ast.literal_eval(f.read())                       
+        cfg = ast.literal_eval(f.read()) 
+    return (cfgdir, cfg)                      
 
                                 
 if __name__ == '__main__':
